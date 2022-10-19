@@ -1,66 +1,49 @@
 pipeline {
+    environment {
+        //change the ip address of registry to your registry
+        registry = '44.228.222.42:8085/chatapp'
+        registryCredential = 'nexus-id'
+        dockerImage = ''
+    }
     agent any
 
-  //  tools {
+   // tools {
         // Install the Maven version configured as "M3" and add it to the path.
- //       maven "M3"
-  //  }
+     //   maven "M3"
+    //}
 
     stages {
-        stage('Build') {
+        stage('scm stage') {
             steps {
-               git credentialsId: 'git-token', url: 'git@github.com:Kaliyath/springboot-chat-app.git'
+                // Get some code from a GitHub repository
+             git 'https://github.com/gopal1409/springchat.git'  
             }
         }
-        stage('mvn build') {
-
+         stage('Build') {
             steps {
-
-              sh 'mvn -Dmaven.test.failure.ignore=true clean package'
-
-            }
-
-        }
-
-        stage('unit test') {
-
-            steps {
-
-              sh 'mvn test'
-
-              junit '**/target/surefire-reports/*.xml'
-
-            }
-
-        }
-        
-        stage('checkstyle') {
-            steps {
-              
-              sh 'mvn checkstyle:checkstyle'
-              recordIssues(tools: [checkStyle(pattern: '**/checkstyle-result.xml')])
-              
+                // Get some code from a GitHub repository
+             sh 'mvn clean package'  
             }
         }
-        
-        stage('sonar') {
+        stage('build image') {
             steps {
-              
-              sh 'mvn clean verify sonar:sonar \
-  -Dsonar.projectKey=chat-app \
-  -Dsonar.host.url=http://54.244.150.215:9000 \
-  -Dsonar.login=sqp_57a5286f794abbc89bfdf450538c0f3523ae6747'
-              
+                // Get some code from a GitHub repository
+                script {
+                    dockerImage=docker.build registry + "$BUILD_NUMBER"
+                }
             }
         }
-        
-        stage('nexus') {
+        stage('push image') {
             steps {
-              
-              nexusArtifactUploader artifacts: [[artifactId: 'websocket-demo', classifier: '', file: 'target/websocket-demo-0.0.1-SNAPSHOT.jar', type: 'jar']], credentialsId: 'nexus-id', groupId: 'websocket-demo', nexusUrl: '44.228.222.42:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: '0.0.1-SNAPSHOT'
-              
+                // Get some code from a GitHub repository
+                script {
+                    // This step should not normally be used in your script. Consult the inline help for details.
+                      withDockerRegistry(credentialsId: 'nexus-id', url: 'http://44.228.222.42:8085') {
+                       dockerImage.push()
+                    }
+                }
             }
         }
+    
     }
 }
-
